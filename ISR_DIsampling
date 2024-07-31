@@ -1,0 +1,42 @@
+#include <stdint.h>
+
+#define NUM_INPUT_PINS 8
+#define CONSISTENT_COUNT 10
+
+// Global variables
+extern uint8_t g_ReadDIpinSts; // Real-time status of digital input pins
+uint8_t g_AppDIpinSts = 0; // Application status of digital input pins
+
+// Counter array to track consecutive consistent states for each pin
+static uint8_t consistentCounter[NUM_INPUT_PINS] = {0};
+
+// ISR function for sampling Digital Inputs
+int ISR_DIsampling() {
+    // Temporary variable to read the status
+    uint8_t currentStatus = g_ReadDIpinSts;
+    
+    // Iterate through each input pin
+    for (int i = 0; i < NUM_INPUT_PINS; i++) {
+        // Mask to isolate the bit for the current pin
+        uint8_t pinMask = (1 << i);
+        
+        // Check if the current status of the pin matches the stored status in g_AppDIpinSts
+        if ((currentStatus & pinMask) == (g_AppDIpinSts & pinMask)) {
+            // If consistent, increment the counter
+            consistentCounter[i]++;
+        } else {
+            // If not consistent, reset the counter
+            consistentCounter[i] = 0;
+        }
+        
+        // If the counter reaches the required consistent count
+        if (consistentCounter[i] >= CONSISTENT_COUNT) {
+            // Update the application status
+            g_AppDIpinSts = (g_AppDIpinSts & ~pinMask) | (currentStatus & pinMask);
+            // Reset the counter after updating
+            consistentCounter[i] = 0;
+        }
+    }
+    
+    return 0;
+}
